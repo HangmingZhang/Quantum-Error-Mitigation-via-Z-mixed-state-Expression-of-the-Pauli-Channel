@@ -324,10 +324,3 @@ class QEMZMSEPC:
         z_mitigated = z_unmitigated / p_t
         return z_mitigated, p_t
 
-
-# In[6]:
-
-
-# In all cases, it can be observed that the expectation values after error mitigation
-# using the QEM-ZMSEPC method are identical to the ideal values, implying the validity of the ZMSEPC theory .
-
