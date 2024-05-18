@@ -76,7 +76,7 @@ class NqubitsChannel:
         self.n_qubits = n_qubits
         self.pauli_set_n_qubits = pauli_set_n_qubits
         
-    def nqubitsdepolarizingChannel(self, p):
+    def nqubitsdepolarizingchannel(self, p):
         kraus_matrices = self.pauli_set_n_qubits.copy()
         for i in range(1, len(kraus_matrices)):
             kraus_matrices[i] = kraus_matrices[i] * np.sqrt((1 - p)/(4 ** self.n_qubits - 1))
