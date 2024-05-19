@@ -72,19 +72,23 @@ class NqubitsPauliMatrices:
 
 
 class NqubitsChannel:
-    def __init__(self, n_qubits, pauli_set_n_qubits):
+    def __init__(self, n_qubits):
         self.n_qubits = n_qubits
-        self.pauli_set_n_qubits = pauli_set_n_qubits
+        self.nqubitspaulimatrices = NqubitsPauliMatrices
         
     def nqubitsdepolarizingchannel(self, p):
-        kraus_matrices = self.pauli_set_n_qubits.copy()
+        nqubitspaulimatrices = self.nqubitspaulimatrices(self.n_qubits)
+        pauli_set_n_qubits = nqubitspaulimatrices.get_pauli_matrices_of_n_qubits()
+        kraus_matrices = pauli_set_n_qubits.copy()
         for i in range(1, len(kraus_matrices)):
             kraus_matrices[i] = kraus_matrices[i] * np.sqrt((1 - p)/(4 ** self.n_qubits - 1))
         kraus_matrices[0] = np.sqrt(p) * kraus_matrices[0]
         return kraus_matrices
     
     def nqubitsrandompaulichannel(self, p_identity=0.5):
-        kraus_matrices = self.pauli_set_n_qubits.copy()
+        nqubitspaulimatrices = self.nqubitspaulimatrices(self.n_qubits)
+        pauli_set_n_qubits = nqubitspaulimatrices.get_pauli_matrices_of_n_qubits()
+        kraus_matrices = pauli_set_n_qubits.copy()
         p_total = 1
         coefficient_0 = random.uniform(p_identity, p_total)
         kraus_matrices[0] = kraus_matrices[0] * np.sqrt(coefficient_0)
@@ -97,7 +101,9 @@ class NqubitsChannel:
         return kraus_matrices
     
     def nqubitsidentitychannel(self):
-        kraus_matrices = self.pauli_set_n_qubits.copy()
+        nqubitspaulimatrices = self.nqubitspaulimatrices(self.n_qubits)
+        pauli_set_n_qubits = nqubitspaulimatrices.get_pauli_matrices_of_n_qubits()
+        kraus_matrices = pauli_set_n_qubits.copy()
         for i in range(1, len(kraus_matrices)):
             kraus_matrices[i] = kraus_matrices[i] * 0
         return kraus_matrices
@@ -109,7 +115,6 @@ class NqubitsChannel:
 class QEMZMSEPC:
     def __init__(self, n_qubits):
         self.n_qubits = n_qubits
-        self.nqubitspaulimatrices = NqubitsPauliMatrices
         self.nqubitschannel = NqubitsChannel
         
         
@@ -163,17 +168,13 @@ class QEMZMSEPC:
             else:
                 raise ValueError("Operation can only be 'RX', 'RY', 'RZ' or 'CNOT'.")
         if need_gate_noise:
-            nqubitspaulimatrices = self.nqubitspaulimatrices(self.n_qubits)
-            pauli_set_n_qubits = nqubitspaulimatrices.get_pauli_matrices_of_n_qubits()
-            nqubitschannel = self.nqubitschannel(self.n_qubits, pauli_set_n_qubits)
+            nqubitschannel = self.nqubitschannel(self.n_qubits)
             kraus_matrices_of_a_depolarizing_channel = nqubitschannel.nqubitsdepolarizingchannel(p)
             qml.QubitChannel(K_list=kraus_matrices_of_a_depolarizing_channel,
                          wires=[i for i in range(self.n_qubits)])
         if need_measurement_noise:
             if kraus_matrices_of_a_pauli_channel is None:
-                nqubitspaulimatrices = self.nqubitspaulimatrices(self.n_qubits)
-                pauli_set_n_qubits = nqubitspaulimatrices.get_pauli_matrices_of_n_qubits()
-                nqubitschannel = self.nqubitschannel(self.n_qubits, pauli_set_n_qubits)
+                nqubitschannel = self.nqubitschannel(self.n_qubits)
                 kraus_matrices_of_a_pauli_channel = nqubitschannel.nqubitsidentitychannel()
             qml.QubitChannel(kraus_matrices_of_a_pauli_channel,
                          wires=[i for i in range(self.n_qubits)])
@@ -225,9 +226,7 @@ class QEMZMSEPC:
                     raise ValueError("Operation can only be 'RX', 'RY', 'RZ' or 'CNOT'.")
             
             if need_gate_noise:
-                nqubitspaulimatrices = self.nqubitspaulimatrices(self.n_qubits)
-                pauli_set_n_qubits = nqubitspaulimatrices.get_pauli_matrices_of_n_qubits()
-                nqubitschannel = self.nqubitschannel(self.n_qubits, pauli_set_n_qubits)
+                nqubitschannel = self.nqubitschannel(self.n_qubits)
                 kraus_matrices_of_a_depolarizing_channel = nqubitschannel.nqubitsdepolarizingchannel(p)
                 qml.QubitChannel(K_list=kraus_matrices_of_a_depolarizing_channel,
                              wires=[i for i in range(self.n_qubits)])
@@ -244,18 +243,14 @@ class QEMZMSEPC:
                     qml.CNOT(wires=[paras[-i-1][0], paras[-i-1][1]])
             
             if need_gate_noise:
-                nqubitspaulimatrices = self.nqubitspaulimatrices(self.n_qubits)
-                pauli_set_n_qubits = nqubitspaulimatrices.get_pauli_matrices_of_n_qubits()
-                nqubitschannel = self.nqubitschannel(self.n_qubits, pauli_set_n_qubits)
+                nqubitschannel = self.nqubitschannel(self.n_qubits)
                 kraus_matrices_of_a_depolarizing_channel = nqubitschannel.nqubitsdepolarizingchannel(p)
                 qml.QubitChannel(K_list=kraus_matrices_of_a_depolarizing_channel,
                              wires=[i for i in range(self.n_qubits)])   
         
         if need_measurement_noise:
             if kraus_matrices_of_a_pauli_channel is None:
-                nqubitspaulimatrices = self.nqubitspaulimatrices(self.n_qubits)
-                pauli_set_n_qubits = nqubitspaulimatrices.get_pauli_matrices_of_n_qubits()
-                nqubitschannel = self.nqubitschannel(self.n_qubits, pauli_set_n_qubits)
+                nqubitschannel = self.nqubitschannel(self.n_qubits)
                 kraus_matrices_of_a_pauli_channel = nqubitschannel.nqubitsidentitychannel()
             qml.QubitChannel(kraus_matrices_of_a_pauli_channel,
                          wires=[i for i in range(self.n_qubits)])
@@ -271,9 +266,7 @@ class QEMZMSEPC:
     
     def __calibration_cir1(self, kraus_matrices_of_a_pauli_channel=None):
         if kraus_matrices_of_a_pauli_channel is None:
-            nqubitspaulimatrices = self.nqubitspaulimatrices(self.n_qubits)
-            pauli_set_n_qubits = nqubitspaulimatrices.get_pauli_matrices_of_n_qubits()
-            nqubitschannel = self.nqubitschannel(self.n_qubits, pauli_set_n_qubits)
+            nqubitschannel = self.nqubitschannel(self.n_qubits)
             kraus_matrices_of_a_pauli_channel = nqubitschannel.nqubitsidentitychannel()
         qml.QubitChannel(kraus_matrices_of_a_pauli_channel,
                          wires=[i for i in range(self.n_qubits)])
@@ -287,9 +280,7 @@ class QEMZMSEPC:
     
     def __calibration_cir2(self, kraus_matrices_of_a_pauli_channel=None):
         if kraus_matrices_of_a_pauli_channel is None:
-            nqubitspaulimatrices = self.nqubitspaulimatrices(self.n_qubits)
-            pauli_set_n_qubits = nqubitspaulimatrices.get_pauli_matrices_of_n_qubits()
-            nqubitschannel = self.nqubitschannel(self.n_qubits, pauli_set_n_qubits)
+            nqubitschannel = self.nqubitschannel(self.n_qubits)
             kraus_matrices_of_a_pauli_channel = nqubitschannel.nqubitsidentitychannel()
         for i in range(self.n_qubits):
             qml.PauliX(wires=i)
@@ -304,17 +295,18 @@ class QEMZMSEPC:
         
 # This is the output expectation value of the original noisy quantum circuit on the device dev.
         if kraus_matrices_of_a_pauli_channel is None:
-            nqubitspaulimatrices = self.nqubitspaulimatrices(self.n_qubits)
-            pauli_set_n_qubits = nqubitspaulimatrices.get_pauli_matrices_of_n_qubits()
-            nqubitschannel = self.nqubitschannel(self.n_qubits, pauli_set_n_qubits)
+            nqubitschannel = self.nqubitschannel(self.n_qubits)
             kraus_matrices_of_a_pauli_channel = nqubitschannel.nqubitsidentitychannel()
             
         z_unmitigated = self.circuit_output(operations=operations, paras=paras, p=p, dev=dev,
                     kraus_matrices_of_a_pauli_channel=kraus_matrices_of_a_pauli_channel,
                     need_gate_noise=True, need_measurement_noise=True)
-        p_u = np.sqrt(self.ufolding_output(noise_factor=3, operations=operations, paras=paras, p=p, dev=dev,
+        z_noise_factor_3 = self.ufolding_output(noise_factor=3, operations=operations, paras=paras, p=p, dev=dev,
                   kraus_matrices_of_a_pauli_channel=kraus_matrices_of_a_pauli_channel,
-                  need_gate_noise=True, need_measurement_noise=True) / z_unmitigated)
+                  need_gate_noise=True, need_measurement_noise=True)
+        if z_unmitigated * z_noise_factor_3 < 0:
+            raise ValueError("It is recommended to increase shots to obtain more stable measurement results to do error mitigation.")
+        p_u = np.sqrt(z_noise_factor_3 / z_unmitigated)
         if self.n_qubits % 2 == 0:
             p_t = p_u * 0.5 * (self.__calibration_cir1_output(dev, kraus_matrices_of_a_pauli_channel) +
                        self.__calibration_cir2_output(dev, kraus_matrices_of_a_pauli_channel))
@@ -323,4 +315,10 @@ class QEMZMSEPC:
                        self.__calibration_cir2_output(dev, kraus_matrices_of_a_pauli_channel))
         z_mitigated = z_unmitigated / p_t
         return z_mitigated, p_t
+
+
+# In[ ]:
+
+
+
 
