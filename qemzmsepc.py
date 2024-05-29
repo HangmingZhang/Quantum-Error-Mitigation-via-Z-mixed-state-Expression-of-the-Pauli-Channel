@@ -170,8 +170,7 @@ class QEMZMSEPC:
                          wires=[i for i in range(self.n_qubits)])
         if need_measurement_noise:
             if kraus_matrices_of_a_pauli_channel is None:
-                nqubitschannel = self.nqubitschannel(self.n_qubits)
-                kraus_matrices_of_a_pauli_channel = nqubitschannel.nqubitsidentitychannel()
+                kraus_matrices_of_a_pauli_channel = self.nqubitschannel.nqubitsidentitychannel()
             qml.QubitChannel(kraus_matrices_of_a_pauli_channel,
                          wires=[i for i in range(self.n_qubits)])
         
