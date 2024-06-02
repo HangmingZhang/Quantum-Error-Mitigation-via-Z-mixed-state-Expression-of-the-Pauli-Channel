@@ -88,14 +88,16 @@ class NqubitsChannel:
 # In[4]:
 
 
+# In the V2 version of the code, we mainly updated the input method of the parameters.
 class QEMZMSEPC:
     def __init__(self, n_qubits):
         self.n_qubits = n_qubits
         self.nqubitschannel = NqubitsChannel(n_qubits)
 
-    def noise_circuit(self, circuit, p=1,
+    def noise_circuit(self, circuit, *args, p=1,
                        kraus_matrices_of_a_pauli_channel=None,
-                       need_gate_noise=False, need_measurement_noise=False):
+                       need_gate_noise=False, need_measurement_noise=False, **kwargs):
+        # args and kwargs: parameters of circuit
         if p < 0:
             raise ValueError("p can not less than 0.")
         
@@ -105,24 +107,22 @@ class QEMZMSEPC:
         if kraus_matrices_of_a_pauli_channel is None:
             kraus_matrices_of_a_pauli_channel = self.nqubitschannel.nqubitsidentitychannel()
             
-        def inner(*args, **kwargs):
-            circuit(*args, **kwargs)
-            if need_gate_noise:
-                kraus_matrices_of_a_depolarizing_channel = self.nqubitschannel.nqubitsdepolarizingchannel(p)
-                qml.QubitChannel(K_list=kraus_matrices_of_a_depolarizing_channel,
+        circuit(*args, **kwargs)
+        if need_gate_noise:
+            kraus_matrices_of_a_depolarizing_channel = self.nqubitschannel.nqubitsdepolarizingchannel(p)
+            qml.QubitChannel(K_list=kraus_matrices_of_a_depolarizing_channel,
                          wires=[i for i in range(self.n_qubits)])
-            if need_measurement_noise:
-                qml.QubitChannel(kraus_matrices_of_a_pauli_channel,
-                         wires=[i for i in range(self.n_qubits)])
-            m = qml.PauliZ(0)
-            for i in range(1, self.n_qubits):
-                m = m @ qml.PauliZ(i)
-            return qml.expval(m)
-        return inner
+        if need_measurement_noise:
+            qml.QubitChannel(kraus_matrices_of_a_pauli_channel,
+                        wires=[i for i in range(self.n_qubits)])
+        m = qml.PauliZ(0)
+        for i in range(1, self.n_qubits):
+             m = m @ qml.PauliZ(i)
+        return qml.expval(m)
     
-    def noise_ufolding_circuit(self, circuit, noise_factor, p=1,
+    def noise_ufolding_circuit(self, circuit, noise_factor, *args, p=1,
                 kraus_matrices_of_a_pauli_channel=None,
-                need_gate_noise=False, need_measurement_noise=False):
+                need_gate_noise=False, need_measurement_noise=False, **kwargs):
         
         if (noise_factor - 1) % 2 != 0:
             raise ValueError("noise_factor can only be odd.")
@@ -141,27 +141,25 @@ class QEMZMSEPC:
         
         epoch = int((noise_factor - 1) / 2)
             
-        def inner(*args, **kwargs):
-            for _ in range(epoch + 1):
-                circuit(*args, **kwargs)
-                if need_gate_noise:
-                    kraus_matrices_of_a_depolarizing_channel = self.nqubitschannel.nqubitsdepolarizingchannel(p)
-                    qml.QubitChannel(K_list=kraus_matrices_of_a_depolarizing_channel,
+        for _ in range(epoch + 1):
+            circuit(*args, **kwargs)
+            if need_gate_noise:
+                kraus_matrices_of_a_depolarizing_channel = self.nqubitschannel.nqubitsdepolarizingchannel(p)
+                qml.QubitChannel(K_list=kraus_matrices_of_a_depolarizing_channel,
                                  wires=[i for i in range(self.n_qubits)])
-            for _ in range(epoch):
-                qml.adjoint(circuit)(*args, **kwargs)
-                if need_gate_noise:
-                    kraus_matrices_of_a_depolarizing_channel = self.nqubitschannel.nqubitsdepolarizingchannel(p)
-                    qml.QubitChannel(K_list=kraus_matrices_of_a_depolarizing_channel,
+        for _ in range(epoch):
+            qml.adjoint(circuit)(*args, **kwargs)
+            if need_gate_noise:
+                kraus_matrices_of_a_depolarizing_channel = self.nqubitschannel.nqubitsdepolarizingchannel(p)
+                qml.QubitChannel(K_list=kraus_matrices_of_a_depolarizing_channel,
                                  wires=[i for i in range(self.n_qubits)])
-            if need_measurement_noise:
-                qml.QubitChannel(kraus_matrices_of_a_pauli_channel,
+        if need_measurement_noise:
+            qml.QubitChannel(K_list=kraus_matrices_of_a_pauli_channel,
                              wires=[i for i in range(self.n_qubits)])
-            m = qml.PauliZ(0)
-            for i in range(1, self.n_qubits):
-                m = m @ qml.PauliZ(i)
-            return qml.expval(m)
-        return inner
+        m = qml.PauliZ(0)
+        for i in range(1, self.n_qubits):
+            m = m @ qml.PauliZ(i)
+        return qml.expval(m)
     
     def __calibration_cir1_output(self, dev, kraus_matrices_of_a_pauli_channel=None):
         return qml.QNode(self.__calibration_cir1, dev)(kraus_matrices_of_a_pauli_channel)
@@ -169,7 +167,7 @@ class QEMZMSEPC:
     def __calibration_cir1(self, kraus_matrices_of_a_pauli_channel=None):
         if kraus_matrices_of_a_pauli_channel is None:
             kraus_matrices_of_a_pauli_channel = self.nqubitschannel.nqubitsidentitychannel()
-        qml.QubitChannel(kraus_matrices_of_a_pauli_channel,
+        qml.QubitChannel(K_list=kraus_matrices_of_a_pauli_channel,
                          wires=[i for i in range(self.n_qubits)])
         m = qml.PauliZ(0)
         for i in range(1, self.n_qubits):
@@ -184,27 +182,25 @@ class QEMZMSEPC:
             kraus_matrices_of_a_pauli_channel = self.nqubitschannel.nqubitsidentitychannel()
         for i in range(self.n_qubits):
             qml.PauliX(wires=i)
-        qml.QubitChannel(kraus_matrices_of_a_pauli_channel,
+        qml.QubitChannel(K_list=kraus_matrices_of_a_pauli_channel,
                          wires=[i for i in range(self.n_qubits)])
         m = qml.PauliZ(0)
         for i in range(1, self.n_qubits):
             m = m @ qml.PauliZ(i)
         return qml.expval(m)
 
-    def qemzmsepc(self, circuit, p, dev, kraus_matrices_of_a_pauli_channel=None, *args, **kwargs):
+    def qemzmsepc(self, circuit, p, dev, *args, kraus_matrices_of_a_pauli_channel=None, **kwargs):
         
         if kraus_matrices_of_a_pauli_channel is None:
             kraus_matrices_of_a_pauli_channel = self.nqubitschannel.nqubitsidentitychannel()
 
-        inner_func_in_noise_circuit = self.noise_circuit(circuit=circuit, p=p,
-                       kraus_matrices_of_a_pauli_channel=kraus_matrices_of_a_pauli_channel,
-                       need_gate_noise=True, need_measurement_noise=True)
-        z_unmitigated = qml.QNode(inner_func_in_noise_circuit, dev)(*args, **kwargs)
+        z_unmitigated = qml.QNode(self.noise_circuit, dev)(circuit, *args, p=p,
+                        kraus_matrices_of_a_pauli_channel=kraus_matrices_of_a_pauli_channel, 
+                        need_gate_noise=True, need_measurement_noise=True, **kwargs)
         
-        inner_func_in_noise_ufolding_circuit = self.noise_ufolding_circuit(circuit=circuit, noise_factor=3, p=p,
-                       kraus_matrices_of_a_pauli_channel=kraus_matrices_of_a_pauli_channel,
-                       need_gate_noise=True, need_measurement_noise=True)
-        z_noise_factor_3 = qml.QNode(inner_func_in_noise_ufolding_circuit, dev)(*args, **kwargs)
+        z_noise_factor_3 = qml.QNode(self.noise_ufolding_circuit, dev)(circuit, 3, *args, p=p,
+                        kraus_matrices_of_a_pauli_channel=kraus_matrices_of_a_pauli_channel,
+                        need_gate_noise=True, need_measurement_noise=True, **kwargs)
         
         if z_unmitigated * z_noise_factor_3 < 0:
             raise ValueError("It is recommended to increase shots to obtain more stable measurement results to do error mitigation.")
