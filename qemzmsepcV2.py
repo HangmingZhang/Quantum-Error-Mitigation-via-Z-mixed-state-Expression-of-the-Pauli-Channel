@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[1]:
+# In[4]:
 
 
 import pennylane as qml
@@ -9,7 +9,7 @@ from pennylane import numpy as np
 import random
 
 
-# In[2]:
+# In[5]:
 
 
 class NqubitsPauliMatrices:
@@ -47,7 +47,7 @@ class NqubitsPauliMatrices:
         return pauli_set_n_qubits
 
 
-# In[3]:
+# In[6]:
 
 
 class NqubitsChannel:
@@ -93,6 +93,21 @@ class QEMZMSEPC:
     def __init__(self, n_qubits):
         self.n_qubits = n_qubits
         self.nqubitschannel = NqubitsChannel(n_qubits)
+        
+    def __add_gate_noise(self, p):
+        kraus_matrices_of_a_depolarizing_channel = self.nqubitschannel.nqubitsdepolarizingchannel(p)
+        qml.QubitChannel(kraus_matrices_of_a_depolarizing_channel,
+                         wires=[i for i in range(self.n_qubits)])
+        
+    def __add_measurement_noise(self, kraus_matrices_of_a_pauli_channel):
+        qml.QubitChannel(kraus_matrices_of_a_pauli_channel,
+                        wires=[i for i in range(self.n_qubits)])
+    
+    def __create_measurement_ops(self):
+        m = qml.PauliZ(0)
+        for i in range(1, self.n_qubits):
+             m = m @ qml.PauliZ(i)
+        return m
 
     def noise_circuit(self, circuit, *args, p=1,
                        kraus_matrices_of_a_pauli_channel=None,
@@ -109,16 +124,11 @@ class QEMZMSEPC:
             
         circuit(*args, **kwargs)
         if need_gate_noise:
-            kraus_matrices_of_a_depolarizing_channel = self.nqubitschannel.nqubitsdepolarizingchannel(p)
-            qml.QubitChannel(K_list=kraus_matrices_of_a_depolarizing_channel,
-                         wires=[i for i in range(self.n_qubits)])
+            self.__add_gate_noise(p)
         if need_measurement_noise:
-            qml.QubitChannel(kraus_matrices_of_a_pauli_channel,
-                        wires=[i for i in range(self.n_qubits)])
-        m = qml.PauliZ(0)
-        for i in range(1, self.n_qubits):
-             m = m @ qml.PauliZ(i)
-        return qml.expval(m)
+            self.__add_measurement_noise(kraus_matrices_of_a_pauli_channel)
+        
+        return qml.expval(self.__create_measurement_ops())
     
     def noise_ufolding_circuit(self, circuit, noise_factor, *args, p=1,
                 kraus_matrices_of_a_pauli_channel=None,
@@ -144,22 +154,16 @@ class QEMZMSEPC:
         for _ in range(epoch + 1):
             circuit(*args, **kwargs)
             if need_gate_noise:
-                kraus_matrices_of_a_depolarizing_channel = self.nqubitschannel.nqubitsdepolarizingchannel(p)
-                qml.QubitChannel(K_list=kraus_matrices_of_a_depolarizing_channel,
-                                 wires=[i for i in range(self.n_qubits)])
+                self.__add_gate_noise(p)
         for _ in range(epoch):
             qml.adjoint(circuit)(*args, **kwargs)
             if need_gate_noise:
-                kraus_matrices_of_a_depolarizing_channel = self.nqubitschannel.nqubitsdepolarizingchannel(p)
-                qml.QubitChannel(K_list=kraus_matrices_of_a_depolarizing_channel,
-                                 wires=[i for i in range(self.n_qubits)])
+                self.__add_gate_noise(p)
+        
         if need_measurement_noise:
-            qml.QubitChannel(K_list=kraus_matrices_of_a_pauli_channel,
-                             wires=[i for i in range(self.n_qubits)])
-        m = qml.PauliZ(0)
-        for i in range(1, self.n_qubits):
-            m = m @ qml.PauliZ(i)
-        return qml.expval(m)
+            self.__add_measurement_noise(kraus_matrices_of_a_pauli_channel)
+        
+        return qml.expval(self.__create_measurement_ops())
     
     def __calibration_cir1_output(self, dev, kraus_matrices_of_a_pauli_channel=None):
         return qml.QNode(self.__calibration_cir1, dev)(kraus_matrices_of_a_pauli_channel)
@@ -167,12 +171,10 @@ class QEMZMSEPC:
     def __calibration_cir1(self, kraus_matrices_of_a_pauli_channel=None):
         if kraus_matrices_of_a_pauli_channel is None:
             kraus_matrices_of_a_pauli_channel = self.nqubitschannel.nqubitsidentitychannel()
-        qml.QubitChannel(K_list=kraus_matrices_of_a_pauli_channel,
-                         wires=[i for i in range(self.n_qubits)])
-        m = qml.PauliZ(0)
-        for i in range(1, self.n_qubits):
-            m = m @ qml.PauliZ(i)
-        return qml.expval(m)
+            
+        self.__add_measurement_noise(kraus_matrices_of_a_pauli_channel)
+        
+        return qml.expval(self.__create_measurement_ops())
     
     def __calibration_cir2_output(self, dev, kraus_matrices_of_a_pauli_channel=None):
         return qml.QNode(self.__calibration_cir2, dev)(kraus_matrices_of_a_pauli_channel)
@@ -180,14 +182,13 @@ class QEMZMSEPC:
     def __calibration_cir2(self, kraus_matrices_of_a_pauli_channel=None):
         if kraus_matrices_of_a_pauli_channel is None:
             kraus_matrices_of_a_pauli_channel = self.nqubitschannel.nqubitsidentitychannel()
+            
         for i in range(self.n_qubits):
             qml.PauliX(wires=i)
-        qml.QubitChannel(K_list=kraus_matrices_of_a_pauli_channel,
-                         wires=[i for i in range(self.n_qubits)])
-        m = qml.PauliZ(0)
-        for i in range(1, self.n_qubits):
-            m = m @ qml.PauliZ(i)
-        return qml.expval(m)
+            
+        self.__add_measurement_noise(kraus_matrices_of_a_pauli_channel)
+        
+        return qml.expval(self.__create_measurement_ops())
 
     def qemzmsepc(self, circuit, p, dev, *args, kraus_matrices_of_a_pauli_channel=None, **kwargs):
         
@@ -201,6 +202,9 @@ class QEMZMSEPC:
         z_noise_factor_3 = qml.QNode(self.noise_ufolding_circuit, dev)(circuit, 3, *args, p=p,
                         kraus_matrices_of_a_pauli_channel=kraus_matrices_of_a_pauli_channel,
                         need_gate_noise=True, need_measurement_noise=True, **kwargs)
+        
+        if np.abs(z_unmitigated) < 10**-7:
+            raise ValueError("It is unstable to do error mitigation in this situation.")
         
         if z_unmitigated * z_noise_factor_3 < 0:
             raise ValueError("It is recommended to increase shots to obtain more stable measurement results to do error mitigation.")
