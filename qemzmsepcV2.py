@@ -199,11 +199,15 @@ class QEMZMSEPC:
                         kraus_matrices_of_a_pauli_channel=kraus_matrices_of_a_pauli_channel, 
                         need_gate_noise=True, need_measurement_noise=True, **kwargs)
         
-        z_noise_factor_3 = qml.QNode(self.noise_ufolding_circuit, dev)(circuit, 3, *args, p=p,
+        noise_factor = 3
+        
+        z_noise_factor_3 = qml.QNode(self.noise_ufolding_circuit, dev)(circuit, noise_factor, *args, p=p,
                         kraus_matrices_of_a_pauli_channel=kraus_matrices_of_a_pauli_channel,
                         need_gate_noise=True, need_measurement_noise=True, **kwargs)
         
-        if np.abs(z_unmitigated) < 10**-7:
+        eps = 10 ** -7
+        
+        if np.abs(z_unmitigated) < eps:
             raise ValueError("It is unstable to do error mitigation in this situation.")
         
         if z_unmitigated * z_noise_factor_3 < 0:
