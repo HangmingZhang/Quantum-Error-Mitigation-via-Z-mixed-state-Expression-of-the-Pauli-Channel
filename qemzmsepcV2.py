@@ -1,15 +1,16 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[4]:
+# In[1]:
 
 
 import pennylane as qml
 from pennylane import numpy as np
+import itertools
 import random
 
 
-# In[5]:
+# In[2]:
 
 
 class NqubitsPauliMatrices:
@@ -21,33 +22,27 @@ class NqubitsPauliMatrices:
         pauli_x_matrix_1_qubit = np.array([[0, 1], [1, 0]])
         pauli_y_matrix_1_qubit = np.array([[0, -1j], [1j, 0]])
         pauli_z_matrix_1_qubit = np.array([[1, 0], [0, -1]])
-        pauli_set_n_qubits = []
-        pauli_set = []
-        pauli_set_1_qubit = []
-        pauli_set_1_qubit.append(pauli_i_matrix_1_qubit)
-        pauli_set_1_qubit.append(pauli_x_matrix_1_qubit)
-        pauli_set_1_qubit.append(pauli_y_matrix_1_qubit)
-        pauli_set_1_qubit.append(pauli_z_matrix_1_qubit)
-        for i in pauli_set_1_qubit:
-            for j in pauli_set_1_qubit:
-                temp = np.kron(i, j)
-                pauli_set.append(temp)
+        pauli_set_1_qubit = [pauli_i_matrix_1_qubit, pauli_x_matrix_1_qubit,
+                             pauli_y_matrix_1_qubit, pauli_z_matrix_1_qubit]
+        
         if self.n_qubits == 1:
             return pauli_set_1_qubit
-        if self.n_qubits == 2:
-            return pauli_set
-        for _ in range(self.n_qubits - 2):
-            for i in pauli_set_1_qubit:
-                for j in pauli_set:
-                    temp = np.kron(i, j)
-                    pauli_set_n_qubits.append(temp)
-            pauli_set = pauli_set_n_qubits
-            pauli_set_n_qubits = []
-        pauli_set_n_qubits = pauli_set.copy()
+        
+        # Generate all combinations of Pauli matrices for n qubits
+        combinations = list(itertools.product(pauli_set_1_qubit, repeat=self.n_qubits))
+        
+        # Compute the Kronecker product for each combination
+        pauli_set_n_qubits = []
+        for combo in combinations:
+            kron_product = combo[0]
+            for matrix in combo[1:]:
+                kron_product = np.kron(kron_product, matrix)
+            pauli_set_n_qubits.append(kron_product)
+        
         return pauli_set_n_qubits
 
 
-# In[6]:
+# In[3]:
 
 
 class NqubitsChannel:
