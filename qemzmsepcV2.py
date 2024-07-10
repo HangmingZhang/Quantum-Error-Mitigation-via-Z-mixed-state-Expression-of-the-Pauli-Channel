@@ -13,6 +13,11 @@ import random
 # In[2]:
 
 
+# Let's start by generating all the Pauli Matrices on N qubits
+# We'll return a list that will hold all the Pauli Matrices
+# For example: In the case of 2 qubits, there are 16 Pauli Matrices, including II, IX, ..., ZY, ZZ
+
+
 class NqubitsPauliMatrices:
     def __init__(self, n_qubits):
         self.n_qubits = n_qubits
@@ -45,12 +50,19 @@ class NqubitsPauliMatrices:
 # In[3]:
 
 
+# Next, we'll create several different quantum channels,
+# including depolarizing channels on n qubits,
+# random Pauli channels on n qubits,
+# and a identity channel on n qubits.
+
+
 class NqubitsChannel:
     def __init__(self, n_qubits):
         self.n_qubits = n_qubits
         self.nqubitspaulimatrices = NqubitsPauliMatrices(n_qubits)
         
     def nqubitsdepolarizingchannel(self, p):
+        # p: Depolarization rate
         pauli_set_n_qubits = self.nqubitspaulimatrices.get_pauli_matrices_of_n_qubits()
         kraus_matrices = pauli_set_n_qubits.copy()
         for i in range(1, len(kraus_matrices)):
@@ -59,13 +71,17 @@ class NqubitsChannel:
         return kraus_matrices
     
     def nqubitsrandompaulichannel(self, p_identity=0.5):
+        # p_identity: lower limit of coefficient_0
+        # coefficient_0: the coefficient in front of the term in which the Pauli matrix is the identity matrix
         if p_identity < 0:
             raise ValueError("p_identity can not less than 0.")
         if p_identity > 1:
             raise ValueError("p_identity can not greater than 1.")
         pauli_set_n_qubits = self.nqubitspaulimatrices.get_pauli_matrices_of_n_qubits()
         kraus_matrices = pauli_set_n_qubits.copy()
+        # We consider CPTP quantum channels
         p_total = 1
+        # coefficient_0: the coefficient in front of the term in which the Pauli matrix is the identity matrix
         coefficient_0 = random.uniform(p_identity, p_total)
         kraus_matrices[0] = kraus_matrices[0] * np.sqrt(coefficient_0)
         p_total -= coefficient_0
@@ -87,13 +103,13 @@ class NqubitsChannel:
 # In[4]:
 
 
-# In the V2 version of the code, we mainly updated the input method of the parameters.
 class QEMZMSEPC:
     def __init__(self, n_qubits):
         self.n_qubits = n_qubits
         self.nqubitschannel = NqubitsChannel(n_qubits)
         
     def __add_gate_noise(self, p):
+        # p: Depolarization rate
         kraus_matrices_of_a_depolarizing_channel = self.nqubitschannel.nqubitsdepolarizingchannel(p)
         qml.QubitChannel(kraus_matrices_of_a_depolarizing_channel,
                          wires=[i for i in range(self.n_qubits)])
@@ -109,6 +125,7 @@ class QEMZMSEPC:
         return m
     
     def __valid_p(self, p):
+        # p: Depolarization rate
         if p < 0:
             raise ValueError("p can not less than 0.")
         
@@ -131,12 +148,15 @@ class QEMZMSEPC:
     def noise_circuit(self, circuit, *args, p=1,
                        kraus_matrices_of_a_pauli_channel=None,
                        need_gate_noise=False, need_measurement_noise=False, **kwargs):
+        # circuit: the original quantum circuit, how the circuit is defined is given in the testV2 file
         # args and kwargs: parameters of circuit
+        # p: Depolarization rate
         if self.__valid_p(p):
             if kraus_matrices_of_a_pauli_channel is None:
                 kraus_matrices_of_a_pauli_channel = self.nqubitschannel.nqubitsidentitychannel()
                 
             circuit(*args, **kwargs)
+            
             if need_gate_noise:
                 self.__add_gate_noise(p)
             if need_measurement_noise:
@@ -147,7 +167,11 @@ class QEMZMSEPC:
     def noise_ufolding_circuit(self, circuit, noise_factor, *args, p=1,
                 kraus_matrices_of_a_pauli_channel=None,
                 need_gate_noise=False, need_measurement_noise=False, **kwargs):
-        
+        # This is the global unitary folding method
+        # circuit: the original quantum circuit, how the circuit is defined is given in the testV2 file
+        # args and kwargs: parameters of circuit
+        # noise_factor: The noise factor can only be taken as an odd number greater than or equal to 3
+        # p: Depolarization rate
         if self.__valid_noise_factor(noise_factor) and self.__valid_p(p):
             if kraus_matrices_of_a_pauli_channel is None:
                 kraus_matrices_of_a_pauli_channel = self.nqubitschannel.nqubitsidentitychannel()
