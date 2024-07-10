@@ -64,6 +64,10 @@ class NqubitsChannel:
         return kraus_matrices
     
     def nqubitsrandompaulichannel(self, p_identity=0.5):
+        if p_identity < 0:
+            raise ValueError("p_identity can not less than 0.")
+        if p_identity > 1:
+            raise ValueError("p_identity can not greater than 1.")
         pauli_set_n_qubits = self.nqubitspaulimatrices.get_pauli_matrices_of_n_qubits()
         kraus_matrices = pauli_set_n_qubits.copy()
         p_total = 1
@@ -108,62 +112,66 @@ class QEMZMSEPC:
         for i in range(1, self.n_qubits):
              m = m @ qml.PauliZ(i)
         return m
+    
+    def __valid_p(self, p):
+        if p < 0:
+            raise ValueError("p can not less than 0.")
+        
+        elif p > 1:
+            raise ValueError("p can not greater than 1.")
+        
+        else:
+            return True
+        
+    def __valid_noise_factor(self, noise_factor):
+        if (noise_factor - 1) % 2 != 0:
+            raise ValueError("noise_factor can only be odd.")
+            
+        elif noise_factor < 3:
+            raise ValueError("noise_factor can not less than 3 during the global folding.")
+        
+        else:
+            return True
 
     def noise_circuit(self, circuit, *args, p=1,
                        kraus_matrices_of_a_pauli_channel=None,
                        need_gate_noise=False, need_measurement_noise=False, **kwargs):
         # args and kwargs: parameters of circuit
-        if p < 0:
-            raise ValueError("p can not less than 0.")
-        
-        if p > 1:
-            raise ValueError("p can not greater than 1.")
-        
-        if kraus_matrices_of_a_pauli_channel is None:
-            kraus_matrices_of_a_pauli_channel = self.nqubitschannel.nqubitsidentitychannel()
+        if self.__valid_p(p):
+            if kraus_matrices_of_a_pauli_channel is None:
+                kraus_matrices_of_a_pauli_channel = self.nqubitschannel.nqubitsidentitychannel()
+                
+            circuit(*args, **kwargs)
+            if need_gate_noise:
+                self.__add_gate_noise(p)
+            if need_measurement_noise:
+                self.__add_measurement_noise(kraus_matrices_of_a_pauli_channel)
             
-        circuit(*args, **kwargs)
-        if need_gate_noise:
-            self.__add_gate_noise(p)
-        if need_measurement_noise:
-            self.__add_measurement_noise(kraus_matrices_of_a_pauli_channel)
-        
-        return qml.expval(self.__create_measurement_ops())
+            return qml.expval(self.__create_measurement_ops())
     
     def noise_ufolding_circuit(self, circuit, noise_factor, *args, p=1,
                 kraus_matrices_of_a_pauli_channel=None,
                 need_gate_noise=False, need_measurement_noise=False, **kwargs):
         
-        if (noise_factor - 1) % 2 != 0:
-            raise ValueError("noise_factor can only be odd.")
+        if self.__valid_noise_factor(noise_factor) and self.__valid_p(p):
+            if kraus_matrices_of_a_pauli_channel is None:
+                kraus_matrices_of_a_pauli_channel = self.nqubitschannel.nqubitsidentitychannel()
             
-        if noise_factor < 3:
-            raise ValueError("noise_factor can not less than 3 during the global folding.")
+            epoch = int((noise_factor - 1) / 2)
                 
-        if p < 0:
-            raise ValueError("p can not less than 0.")
+            for _ in range(epoch + 1):
+                circuit(*args, **kwargs)
+                if need_gate_noise:
+                    self.__add_gate_noise(p)
+            for _ in range(epoch):
+                qml.adjoint(circuit)(*args, **kwargs)
+                if need_gate_noise:
+                    self.__add_gate_noise(p)
             
-        if p > 1:
-            raise ValueError("p can not greater than 1.")
-        
-        if kraus_matrices_of_a_pauli_channel is None:
-            kraus_matrices_of_a_pauli_channel = self.nqubitschannel.nqubitsidentitychannel()
-        
-        epoch = int((noise_factor - 1) / 2)
+            if need_measurement_noise:
+                self.__add_measurement_noise(kraus_matrices_of_a_pauli_channel)
             
-        for _ in range(epoch + 1):
-            circuit(*args, **kwargs)
-            if need_gate_noise:
-                self.__add_gate_noise(p)
-        for _ in range(epoch):
-            qml.adjoint(circuit)(*args, **kwargs)
-            if need_gate_noise:
-                self.__add_gate_noise(p)
-        
-        if need_measurement_noise:
-            self.__add_measurement_noise(kraus_matrices_of_a_pauli_channel)
-        
-        return qml.expval(self.__create_measurement_ops())
+            return qml.expval(self.__create_measurement_ops())
     
     def __calibration_cir1_output(self, dev, kraus_matrices_of_a_pauli_channel=None):
         return qml.QNode(self.__calibration_cir1, dev)(kraus_matrices_of_a_pauli_channel)
