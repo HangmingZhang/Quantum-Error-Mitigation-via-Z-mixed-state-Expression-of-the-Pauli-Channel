@@ -94,9 +94,7 @@ class NqubitsChannel:
     
     def nqubitsidentitychannel(self) -> 'KarusMatricesListofIdentityChannel':
         pauli_set_n_qubits = self.nqubitspaulimatrices.get_pauli_matrices_of_n_qubits()
-        kraus_matrices = pauli_set_n_qubits.copy()
-        for i in range(1, len(kraus_matrices)):
-            kraus_matrices[i] = kraus_matrices[i] * 0
+        kraus_matrices = [matrix * 0 if i != 0 else matrix for i, matrix in enumerate(pauli_set_n_qubits)]
         return kraus_matrices
 
 
