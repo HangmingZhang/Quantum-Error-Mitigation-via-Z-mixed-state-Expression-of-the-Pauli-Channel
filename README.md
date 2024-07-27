@@ -5,3 +5,6 @@ After the paper was published, I developed a V2 version of the code, which is mo
 In the qemzmsepcV2.py file, we encapsulated the QEMZMSEPC method into a library. <br> <br>
 In the qml-task-testV2 file and testV2 file, we demonstrate two processes of using the QEMZMSEPC method, respectively. <br> <br>
 OriginalPaper https://link.springer.com/article/10.1007/s11128-024-04428-4 <br> <br>
+Please feel free to reach out to us with any questions at the following email addresses: <br><br>
+For general inquiries: 'lit@njupt.edu.cn'. <br><br>
+For technical inquiries: '2552892578@qq.com' or '1222014006@njupt.edu.cn'. <br><br>
