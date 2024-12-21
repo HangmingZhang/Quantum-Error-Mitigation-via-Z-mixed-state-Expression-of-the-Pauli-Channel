@@ -61,7 +61,7 @@ class NqubitsChannel:
         self.n_qubits = n_qubits
         self.nqubitspaulimatrices = NqubitsPauliMatrices(n_qubits)
     
-    # 退极化信道
+    # depolarizing channel
     def nqubitsdepolarizingchannel(self, p: float) -> "DepolarizingChannelKrausMatrices":
         if self.__valid_p(p):
             pauli_set_n_qubits = self.nqubitspaulimatrices.get_pauli_matrices_of_n_qubits()
@@ -70,7 +70,7 @@ class NqubitsChannel:
             pauli_set_n_qubits[0] = np.sqrt(p) * pauli_set_n_qubits[0]
             return pauli_set_n_qubits
         
-    # 随机的泡利信道
+    # a random pauli channel
     def nqubitsrandompaulichannel(self, p_identity=0.5) -> "PauliChannelKrausMatrices":
         if self.__valid_p_identity(p_identity):
             pauli_set_n_qubits = self.nqubitspaulimatrices.get_pauli_matrices_of_n_qubits()
@@ -79,7 +79,7 @@ class NqubitsChannel:
                 pauli_set_n_qubits[i] = pauli_set_n_qubits[i] * coefficient_list[i]
             return pauli_set_n_qubits
     
-    # 单位信道
+    # identity channel
     def nqubitsidentitychannel(self) -> "IdentityChannelKrausMatrices":
         pauli_set_n_qubits = self.nqubitspaulimatrices.get_pauli_matrices_of_n_qubits()
         for i in range(1, len(pauli_set_n_qubits)):
