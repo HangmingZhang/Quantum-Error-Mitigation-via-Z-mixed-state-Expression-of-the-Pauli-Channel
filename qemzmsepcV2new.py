@@ -57,49 +57,68 @@ class NqubitsPauliMatrices:
 
 
 class NqubitsChannel:
-    def __init__(self, n_qubits: int):
+    def __init__(self, n_qubits):
         self.n_qubits = n_qubits
         self.nqubitspaulimatrices = NqubitsPauliMatrices(n_qubits)
-        
-    def nqubitsdepolarizingchannel(self, p: float) -> 'KarusMatricesListofDepolarizingChannel':
-        # p: depolarization rate
-        pauli_set_n_qubits = self.nqubitspaulimatrices.get_pauli_matrices_of_n_qubits()
-        kraus_matrices = pauli_set_n_qubits.copy()
-        for i in range(1, len(kraus_matrices)):
-            kraus_matrices[i] = kraus_matrices[i] * np.sqrt((1 - p)/(4 ** self.n_qubits - 1))
-        kraus_matrices[0] = np.sqrt(p) * kraus_matrices[0]
-        return kraus_matrices
     
-    def nqubitsrandompaulichannel(self, p_identity: float = 0.5) -> 'KarusMatricesListofRandomPauliChannel':
-        # p_identity: lower limit of coefficient_0
-        # coefficient_0: the coefficient in front of the term in which the Pauli matrix is the identity matrix
+    # 退极化信道
+    def nqubitsdepolarizingchannel(self, p: float) -> "DepolarizingChannelKrausMatrices":
+        if self.__valid_p(p):
+            pauli_set_n_qubits = self.nqubitspaulimatrices.get_pauli_matrices_of_n_qubits()
+            for i in range(1, len(pauli_set_n_qubits)):
+                pauli_set_n_qubits[i] = pauli_set_n_qubits[i] * np.sqrt((1 - p)/(4 ** self.n_qubits - 1))
+            pauli_set_n_qubits[0] = np.sqrt(p) * pauli_set_n_qubits[0]
+            return pauli_set_n_qubits
+        
+    # 随机的泡利信道
+    def nqubitsrandompaulichannel(self, p_identity=0.5) -> "PauliChannelKrausMatrices":
         if self.__valid_p_identity(p_identity):
             pauli_set_n_qubits = self.nqubitspaulimatrices.get_pauli_matrices_of_n_qubits()
-            kraus_matrices = pauli_set_n_qubits.copy()
-            # we consider CPTP quantum channels
-            p_total = 1
-            # coefficient_0: the coefficient in front of the term in which the Pauli matrix is the identity matrix
-            coefficient_0 = random.uniform(p_identity, p_total)
-            kraus_matrices[0] = kraus_matrices[0] * np.sqrt(coefficient_0)
-            p_total -= coefficient_0
-            for i in range(1, len(kraus_matrices) - 1):
-                coefficient_i = random.uniform(0, p_total)
-                kraus_matrices[i] = kraus_matrices[i] * np.sqrt(coefficient_i)
-                p_total -= coefficient_i
-            kraus_matrices[-1] = kraus_matrices[-1] * np.sqrt(p_total)
-            return kraus_matrices
+            coefficient_list = self.__create_random_p_distribution(p_identity)
+            for i in range(len(pauli_set_n_qubits)):
+                pauli_set_n_qubits[i] = pauli_set_n_qubits[i] * coefficient_list[i]
+            return pauli_set_n_qubits
     
-    def nqubitsidentitychannel(self) -> 'KarusMatricesListofIdentityChannel':
+    # 单位信道
+    def nqubitsidentitychannel(self) -> "IdentityChannelKrausMatrices":
         pauli_set_n_qubits = self.nqubitspaulimatrices.get_pauli_matrices_of_n_qubits()
-        kraus_matrices = [matrix * 0 if i != 0 else matrix for i, matrix in enumerate(pauli_set_n_qubits)]
-        return kraus_matrices
+        for i in range(1, len(pauli_set_n_qubits)):
+            pauli_set_n_qubits[i] = pauli_set_n_qubits[i] * 0
+        return pauli_set_n_qubits
     
     def __valid_p_identity(self, p_identity: float):
-        if p_identity < 0 or p_identity > 1:
-            raise ValueError("p_identity can not less than 0 and can not greater than 1.")
+        if p_identity < 0:
+            raise ValueError("p_identity can not less than 0.")
+        
+        elif p_identity > 1:
+            raise ValueError("p_identity can not greater than 1.")
         
         else:
             return True
+        
+    def __valid_p(self, p: float):
+        if p < 0:
+            raise ValueError("p can not less than 0.")
+        
+        elif p > 1:
+            raise ValueError("p can not greater than 1.")
+        
+        else:
+            return True
+    
+    def __create_random_p_distribution(self, p_identity):
+        p_total = 1
+        coefficient_list = []
+        coefficient_0 = random.uniform(p_identity, p_total)
+        coefficient_list.append(coefficient_0)
+        p_total -= coefficient_0
+        for i in range(4 ** self.n_qubits - 2):
+            coefficient_i = random.uniform(0, p_total)
+            coefficient_list.append(coefficient_i)
+            p_total -= coefficient_i
+        coefficient_list.append(p_total)
+        coefficient_list = np.sqrt(coefficient_list)
+        return coefficient_list
 
 
 # In[4]:
